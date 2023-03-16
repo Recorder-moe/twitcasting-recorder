@@ -3,13 +3,11 @@ name: Reusable docker workflow
 description: Reusable docker workflow.
 
 inputs:
+  DOCKERHUB_ORGANIZATION_NAME:
+    required: true
   DOCKERHUB_USERNAME:
     required: true
   DOCKERHUB_TOKEN:
-    required: true
-  QUAY_USERNAME:
-    required: true
-  QUAY_TOKEN:
     required: true
   tag:
     required: true
@@ -21,7 +19,7 @@ runs:
       id: meta
       uses: docker/metadata-action@v5
       with:
-        images: ${{ inputs.DOCKERHUB_USERNAME }}/twitcasting-recorder,ghcr.io/${{ github.repository_owner }}/twitcasting-recorder,quay.io/${{ github.repository_owner }}/twitcasting-recorder
+        images: ${{ inputs.DOCKERHUB_ORGANIZATION_NAME }}/twitcasting-recorder,ghcr.io/${{ github.repository_owner }}/twitcasting-recorder
         tags: |
           ${{ inputs.tag }}
           latest
@@ -50,13 +48,6 @@ runs:
         username: ${{ github.repository_owner }}
         password: ${{ github.token }}
 
-    - name: Login to Quay Container Registry
-      uses: docker/login-action@v3
-      with:
-        registry: quay.io
-        username: ${{ inputs.QUAY_USERNAME }}
-        password: ${{ inputs.QUAY_TOKEN }}
-
     - name: Build and push
       id: build_push
       uses: docker/build-push-action@v5
@@ -71,26 +62,17 @@ runs:
           VERSION=${{ inputs.tag }}
           RELEASE=${{ github.run_number }}
         platforms: linux/amd64,linux/arm64
-        # Cache to regietry instead of gha to avoid the capacity limit.
-        cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/twitcasting-recorder:cache
-        cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/twitcasting-recorder:cache,mode=max
         sbom: true
         provenance: true
 
     - name: Attest Docker Hub image
       uses: actions/attest-build-provenance@v2
       with:
-        subject-name: ${{ inputs.DOCKERHUB_USERNAME }}/twitcasting-recorder
+        subject-name: ${{ inputs.DOCKERHUB_ORGANIZATION_NAME }}/twitcasting-recorder
         subject-digest: ${{ steps.build_push.outputs.digest }}
 
     - name: Attest GHCR image
       uses: actions/attest-build-provenance@v2
       with:
         subject-name: ghcr.io/${{ github.repository_owner }}/twitcasting-recorder
-        subject-digest: ${{ steps.build_push.outputs.digest }}
-
-    - name: Attest Quay image
-      uses: actions/attest-build-provenance@v2
-      with:
-        subject-name: quay.io/${{ github.repository_owner }}/twitcasting-recorder
         subject-digest: ${{ steps.build_push.outputs.digest }}
